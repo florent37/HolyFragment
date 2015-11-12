@@ -4,10 +4,12 @@ import com.github.florent37.annotations.LogEnter;
 import com.github.florent37.annotations.RunOnUiThread;
 import com.github.florent37.holy.annotations.Holy;
 import com.google.auto.service.AutoService;
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import com.sun.tools.classfile.Type;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -38,7 +40,7 @@ import static javax.lang.model.element.ElementKind.METHOD;
 @AutoService(Processor.class)
 public class TestAnnotationProcessor extends AbstractProcessor {
 
-    Map<Class, HolyFragmentHolder> holders = new HashMap<>();
+    Map<TypeName, HolyFragmentHolder> holders = new HashMap<>();
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment env) {
@@ -57,7 +59,6 @@ public class TestAnnotationProcessor extends AbstractProcessor {
     }
 
     protected void processHolys(RoundEnvironment env) {
-
         for (Element element : env.getElementsAnnotatedWith(Holy.class)) {
             Class annotationClass = Holy.class;
             if (element.getKind() != FIELD) {
@@ -71,37 +72,39 @@ public class TestAnnotationProcessor extends AbstractProcessor {
                         String.format("@%s annotation must be on a field.", annotationClass.getSimpleName()));
             }
 
-            //ex: @Holy Integer i;
-
-            TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
-
-            //ex: i
-            String elementName = enclosingElement.getSimpleName().toString();
-
-            //ex : java.lang.Integer
-            Name className = enclosingElement.getQualifiedName();
-
-            TypeName type = TypeName.get(elementType);
-
-            findOrCreateHolyFragmentHolder()
+            processHoly(element, elementType);
         }
     }
 
+    protected void processHoly(Element element, TypeMirror elementType) {
+        //ex: @Holy Integer i;
+        TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
 
-    public HolyFragmentHolder findOrCreateHolyFragmentHolder(Class fragmentClass) {
-        if (holders.containsKey(fragmentClass))
-            return holders.get(fragmentClass);
+        //ex : java.lang.Integer
+        TypeName typeName = TypeName.get(elementType);
+
+        //ex: i
+        String elementName = enclosingElement.getSimpleName().toString();
+
+        HolyFragmentHolder holder = findOrCreateHolyFragmentHolder(typeName);
+        holder.args.add(new Variable(typeName, elementName));
+    }
+
+
+    public HolyFragmentHolder findOrCreateHolyFragmentHolder(TypeName fragmentClassName) {
+        if (holders.containsKey(fragmentClassName))
+            return holders.get(fragmentClassName);
         else {
-            HolyFragmentHolder holder = new HolyFragmentHolder(fragmentClass);
-            holders.put(fragmentClass, holder);
+            HolyFragmentHolder holder = new HolyFragmentHolder(fragmentClassName);
+            holders.put(fragmentClassName, holder);
             return holder;
         }
     }
 
-    protected String getType(Object arg) {
-        if (arg instanceof Integer)
+    protected String getType(TypeName typeName) {
+        if (typeName == TypeName.INT || typeName == ClassName.get(Integer.class))
             return "Int";
-        if (arg instanceof String)
+        if (typeName == ClassName.get(String.class))
             return "String";
         return "";
     }
@@ -109,35 +112,38 @@ public class TestAnnotationProcessor extends AbstractProcessor {
     public void construct(HolyFragmentHolder holder) {
         MethodSpec.Builder newInstanceBuilder = MethodSpec.methodBuilder("newInstance")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .returns(holder.fragmentClass);
+                .returns(holder.fragmentClassName);
 
-        for (Object arg : holder.args) {
-            newInstanceBuilder.addParameter(arg.getClass, arg.getName());
+        for (Variable arg : holder.args) {
+            newInstanceBuilder.addParameter(arg.typeName, arg.elementName);
         }
 
-        newInstanceBuilder.addStatement("$T bundle = new $T();", Bundle.class, Bundle.class)
+        ClassName bundleClass = ClassName.get("android.os", "Bundle");
 
-        for (Object arg : holder.args) {
-            newInstanceBuilder.addStatement("bundle.put$S(\"$S\",$S)", getType(arg), name, name)
+        newInstanceBuilder.addStatement("$T bundle = new $T();", bundleClass, bundleClass);
+
+        for (Variable arg : holder.args) {
+            newInstanceBuilder.addStatement("bundle.put$S(\"$S\",$S)", getType(arg.typeName), arg.elementName, arg.elementName);
         }
-        newInstanceBuilder.addStatement("$S fragment = new $S();", holder.fragmentClass, holder.fragmentClass)
+
+        newInstanceBuilder.addStatement("$S fragment = new $S();", holder.fragmentClassName, holder.fragmentClassName)
                 .addStatement("fragment.setArguments(bundle);")
-                .addStatement("return fragment;")
-                .build();
-
-
-        MethodSpec bless = MethodSpec.methodBuilder("bless")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter(holder.fragmentClass, "fragment")
-
-                .addStatement("Bundle args = fragment.getArguments();")
-        for (Object arg : holder.args) {
-            newInstanceBuilder.addStatement("fragment.$S = args.get$S(\"$S\");", name, getType(arg), name);
-        }
+                .addStatement("return fragment;");
 
         MethodSpec newInstance = newInstanceBuilder.build();
 
-        TypeSpec helloWorld = TypeSpec.classBuilder("Holy" + holder.fragmentClass.getCanonicalName())
+        MethodSpec.Builder blessBuilder = MethodSpec.methodBuilder("bless")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addParameter(holder.fragmentClassName, "fragment")
+                .addStatement("Bundle args = fragment.getArguments();");
+
+        for (Variable arg : holder.args) {
+            blessBuilder.addStatement("fragment.$S = args.get$S(\"$S\");", arg.elementName, getType(arg.typeName), arg.elementName);
+        }
+
+        MethodSpec bless = blessBuilder.build();
+
+        TypeSpec helloWorld = TypeSpec.classBuilder("Holy" + holder.fragmentClassName)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addMethod(newInstance)
                 .addMethod(bless)
