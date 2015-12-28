@@ -2,7 +2,7 @@
 
 Instantiate a new fragment
 ```java
-HolyMyFragment.newInstance(3,"Florent"));
+HolyMyFragment.newInstance(3,"Florent");
 ```
 
 And then bless it
@@ -17,7 +17,6 @@ public class MyFragment extends Fragment{
         HolyMyFragment.bless(this);
     }
 }
-
 ```
 
 It automatically generates newInstance and data retrieving
