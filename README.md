@@ -1,25 +1,16 @@
 # HolyFragment
 
-Instantiate a new fragment
-```java
-HolyMyFragment.newInstance(3,"Florent");
-```
-
-And then bless it
+Annotate your fragment parameters
 ```java
 public class MyFragment extends Fragment{
 
     @Holy int number;
     @Holy String name;
-
-    @Override public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        HolyMyFragment.bless(this);
-    }
+    
 }
 ```
 
-It automatically generates newInstance and data retrieving
+It will automatically generates newInstance and data retrieving
 
 ```java
 public final class HolyMyFragment {
@@ -37,5 +28,24 @@ public final class HolyMyFragment {
     fragment.number = args.getInt("number");
     fragment.name = args.getString("name");
   }
+}
+```
+
+You'll can Instantiate a new fragment
+```java
+HolyMyFragment.newInstance(3,"Florent");
+```
+
+And then bless it
+```java
+public class MyFragment extends Fragment{
+
+    @Holy int number;
+    @Holy String name;
+
+    @Override public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        HolyMyFragment.bless(this);
+    }
 }
 ```
