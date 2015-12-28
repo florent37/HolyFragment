@@ -7,7 +7,6 @@ public class MyFragment extends Fragment{
     @Holy int number;
     @Holy String name;
     
-}
 ```
 
 It will automatically generates newInstance and data retrieving
