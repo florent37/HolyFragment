@@ -62,15 +62,8 @@ public class HolyProcessor extends AbstractProcessor {
     }
 
     protected boolean isAcceptable(Element element) {
-        Class annotationClass = Holy.class;
-        if (element.getKind() != FIELD) {
-            throw new IllegalStateException(
-                    String.format("@%s annotation must be on a field.", annotationClass.getSimpleName()));
-        }
-
-        if (element.asType().getKind() == TypeKind.TYPEVAR) {
-            throw new IllegalStateException(
-                    String.format("@%s annotation must be on a field.", annotationClass.getSimpleName()));
+        if (element.getKind() != FIELD || element.asType().getKind() == TypeKind.TYPEVAR) {
+            throw new IllegalStateException("Holy annotation must be on a field.");
         }
 
         return true;
