@@ -15,8 +15,8 @@ import com.github.florent37.holy.annotations.Holy;
  */
 public class MyFragment extends Fragment{
 
-    @Holy
-    int number;
+    @Holy int number;
+    @Holy String name;
 
     @Nullable @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {

@@ -10,6 +10,7 @@ import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -34,17 +35,19 @@ import static javax.lang.model.element.ElementKind.FIELD;
 public class TestAnnotationProcessor extends AbstractProcessor {
 
     Map<TypeName, HolyFragmentHolder> holders = new HashMap<>();
+    Set<Element> checkedElements = new HashSet<>();
     Filer filer;
 
     @Override public synchronized void init(ProcessingEnvironment env) {
         super.init(env);
-
         filer = env.getFiler();
+        checkedElements.clear();
     }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment env) {
         processHolys(env);
+        writeHoldersOnJavaFile();
 
         return true;
     }
@@ -60,19 +63,21 @@ public class TestAnnotationProcessor extends AbstractProcessor {
 
     protected void processHolys(RoundEnvironment env) {
         for (Element element : env.getElementsAnnotatedWith(Holy.class)) {
-            Class annotationClass = Holy.class;
-            if (element.getKind() != FIELD) {
-                throw new IllegalStateException(
-                        String.format("@%s annotation must be on a field.", annotationClass.getSimpleName()));
-            }
+            if(!checkedElements.contains(element)) {
+                Class annotationClass = Holy.class;
+                if (element.getKind() != FIELD) {
+                    throw new IllegalStateException(
+                            String.format("@%s annotation must be on a field.", annotationClass.getSimpleName()));
+                }
 
-            TypeMirror elementType = element.asType();
-            if (elementType.getKind() == TypeKind.TYPEVAR) {
-                throw new IllegalStateException(
-                        String.format("@%s annotation must be on a field.", annotationClass.getSimpleName()));
-            }
+                TypeMirror elementType = element.asType();
+                if (elementType.getKind() == TypeKind.TYPEVAR) {
+                    throw new IllegalStateException(
+                            String.format("@%s annotation must be on a field.", annotationClass.getSimpleName()));
+                }
 
-            processHoly(element, elementType);
+                processHoly(element, elementType);
+            }
         }
     }
 
@@ -92,8 +97,6 @@ public class TestAnnotationProcessor extends AbstractProcessor {
 
         HolyFragmentHolder holder = findOrCreateHolyFragmentHolder(enclosingClassName,elementName);
         holder.args.add(new Variable(variableType, variableName));
-
-        construct(holder);
     }
 
     public HolyFragmentHolder findOrCreateHolyFragmentHolder(ClassName fragmentClassName,String elementName) {
@@ -109,9 +112,16 @@ public class TestAnnotationProcessor extends AbstractProcessor {
     protected String getType(TypeName typeName) {
         if (typeName == TypeName.INT || typeName == ClassName.get(Integer.class))
             return "Int";
-        if (typeName == ClassName.get(String.class))
+        if (typeName.equals(ClassName.get(String.class)))
             return "String";
         return "";
+    }
+
+    protected void writeHoldersOnJavaFile(){
+        for(HolyFragmentHolder holder : holders.values()){
+            construct(holder);
+        }
+        holders.clear();
     }
 
     public void construct(HolyFragmentHolder holder) {

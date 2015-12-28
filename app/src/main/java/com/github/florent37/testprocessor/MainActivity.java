@@ -10,7 +10,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         getSupportFragmentManager().beginTransaction()
-                .add(R.id.frame, HolyMyFragment.newInstance(3))
+                .add(R.id.frame, HolyMyFragment.newInstance(3,"Florent"))
                 .commit();
     }
 
