@@ -22,5 +22,9 @@ public class HolyFragmentHolder {
         this.args = new ArrayList<>();
     }
 
+    public void addArgument(Variable variable){
+        args.add(variable);
+    }
+
 
 }

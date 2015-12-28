@@ -24,7 +24,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
 
 import static javax.lang.model.element.ElementKind.FIELD;
 
@@ -32,21 +31,22 @@ import static javax.lang.model.element.ElementKind.FIELD;
  * Created by florentchampigny on 11/11/2015.
  */
 @AutoService(Processor.class)
-public class TestAnnotationProcessor extends AbstractProcessor {
+public class HolyProcessor extends AbstractProcessor {
 
     Map<TypeName, HolyFragmentHolder> holders = new HashMap<>();
-    Set<Element> checkedElements = new HashSet<>();
+    Set<Element> knownElements = new HashSet<>();
     Filer filer;
 
     @Override public synchronized void init(ProcessingEnvironment env) {
         super.init(env);
         filer = env.getFiler();
-        checkedElements.clear();
+        knownElements.clear();
     }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment env) {
         processHolys(env);
+
         writeHoldersOnJavaFile();
 
         return true;
@@ -61,49 +61,49 @@ public class TestAnnotationProcessor extends AbstractProcessor {
         return types;
     }
 
+    protected boolean isAcceptable(Element element) {
+        Class annotationClass = Holy.class;
+        if (element.getKind() != FIELD) {
+            throw new IllegalStateException(
+                    String.format("@%s annotation must be on a field.", annotationClass.getSimpleName()));
+        }
+
+        if (element.asType().getKind() == TypeKind.TYPEVAR) {
+            throw new IllegalStateException(
+                    String.format("@%s annotation must be on a field.", annotationClass.getSimpleName()));
+        }
+
+        return true;
+    }
+
     protected void processHolys(RoundEnvironment env) {
         for (Element element : env.getElementsAnnotatedWith(Holy.class)) {
-            if(!checkedElements.contains(element)) {
-                Class annotationClass = Holy.class;
-                if (element.getKind() != FIELD) {
-                    throw new IllegalStateException(
-                            String.format("@%s annotation must be on a field.", annotationClass.getSimpleName()));
-                }
+            if (!knownElements.contains(element) && isAcceptable(element)) {
 
-                TypeMirror elementType = element.asType();
-                if (elementType.getKind() == TypeKind.TYPEVAR) {
-                    throw new IllegalStateException(
-                            String.format("@%s annotation must be on a field.", annotationClass.getSimpleName()));
-                }
+                //ex: @Holy Integer number;
+                String variableName = element.getSimpleName().toString(); //number
+                TypeName variableType = TypeName.get(element.asType()); //int
 
-                processHoly(element, elementType);
+                //ex : com.github.florent37.MyFragment
+                TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
+
+                //ex: MyFragment
+                String elementName = enclosingElement.getSimpleName().toString();
+
+                //ex : com.github.florent37.MyFragment
+                ClassName enclosingClassName = ClassName.get(enclosingElement);
+
+                HolyFragmentHolder holder = findOrCreateHolyFragmentHolder(enclosingClassName, elementName);
+                holder.addArgument(new Variable(variableType, variableName));
             }
         }
     }
 
-    protected void processHoly(Element element, TypeMirror elementType) {
-        //ex: @Holy Integer number;
-        String variableName = element.getSimpleName().toString(); //number
-        TypeName variableType = TypeName.get(elementType); //int
-
-        //ex : com.github.florent37.MyFragment
-        TypeElement enclosingElement = (TypeElement) element.getEnclosingElement();
-
-        //ex : com.github.florent37.MyFragment
-        ClassName enclosingClassName = ClassName.get(enclosingElement);
-
-        //ex: MyFragment
-        String elementName = enclosingElement.getSimpleName().toString();
-
-        HolyFragmentHolder holder = findOrCreateHolyFragmentHolder(enclosingClassName,elementName);
-        holder.args.add(new Variable(variableType, variableName));
-    }
-
-    public HolyFragmentHolder findOrCreateHolyFragmentHolder(ClassName fragmentClassName,String elementName) {
+    public HolyFragmentHolder findOrCreateHolyFragmentHolder(ClassName fragmentClassName, String elementName) {
         if (holders.containsKey(fragmentClassName))
             return holders.get(fragmentClassName);
         else {
-            HolyFragmentHolder holder = new HolyFragmentHolder(fragmentClassName,elementName);
+            HolyFragmentHolder holder = new HolyFragmentHolder(fragmentClassName, elementName);
             holders.put(fragmentClassName, holder);
             return holder;
         }
@@ -117,8 +117,8 @@ public class TestAnnotationProcessor extends AbstractProcessor {
         return "";
     }
 
-    protected void writeHoldersOnJavaFile(){
-        for(HolyFragmentHolder holder : holders.values()){
+    protected void writeHoldersOnJavaFile() {
+        for (HolyFragmentHolder holder : holders.values()) {
             construct(holder);
         }
         holders.clear();
@@ -138,7 +138,7 @@ public class TestAnnotationProcessor extends AbstractProcessor {
         newInstanceBuilder.addStatement("$T bundle = new $T()", bundleClass, bundleClass);
 
         for (Variable arg : holder.args) {
-            newInstanceBuilder.addStatement("bundle.put$L"+"($S,$L)",getType(arg.typeName), arg.elementName, arg.elementName);
+            newInstanceBuilder.addStatement("bundle.put$L" + "($S,$L)", getType(arg.typeName), arg.elementName, arg.elementName);
         }
 
         newInstanceBuilder.addStatement("$T fragment = new $T()", holder.classNameComplete, holder.classNameComplete)
