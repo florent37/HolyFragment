@@ -16,6 +16,7 @@ import com.github.florent37.holy.annotations.Holy;
 public class MyFragment2 extends Fragment{
 
     @Holy int number;
+    @Holy Model theSerializable;
 
     @Nullable @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -24,7 +25,7 @@ public class MyFragment2 extends Fragment{
 
     @Override public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        HolyMyFragment2.bless(this);
+        //HolyMyFragment2.bless(this);
 
         ((TextView)view.findViewById(R.id.text)).setText(String.valueOf(number));
     }

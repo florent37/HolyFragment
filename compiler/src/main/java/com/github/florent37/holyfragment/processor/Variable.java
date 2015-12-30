@@ -1,4 +1,4 @@
-package com.github.florent37.holy.compiler;
+package com.github.florent37.holyfragment.processor;
 
 import com.squareup.javapoet.TypeName;
 

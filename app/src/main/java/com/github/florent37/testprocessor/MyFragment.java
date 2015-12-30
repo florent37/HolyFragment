@@ -25,7 +25,7 @@ public class MyFragment extends Fragment{
 
     @Override public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        HolyMyFragment.bless(this);
+        //HolyMyFragment.bless(this);
 
         ((TextView)view.findViewById(R.id.text)).setText(String.valueOf(number));
     }

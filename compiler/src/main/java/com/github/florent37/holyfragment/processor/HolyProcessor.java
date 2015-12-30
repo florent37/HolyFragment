@@ -1,7 +1,8 @@
-package com.github.florent37.holy.compiler;
+package com.github.florent37.holyfragment.processor;
 
 import com.github.florent37.holy.annotations.Holy;
 import com.google.auto.service.AutoService;
+import com.google.common.collect.Sets;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
@@ -20,6 +21,7 @@ import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -30,6 +32,7 @@ import static javax.lang.model.element.ElementKind.FIELD;
 /**
  * Created by florentchampigny on 11/11/2015.
  */
+@SupportedAnnotationTypes("com.github.florent37.holy.annotations.Holy")
 @AutoService(Processor.class)
 public class HolyProcessor extends AbstractProcessor {
 
@@ -50,15 +53,6 @@ public class HolyProcessor extends AbstractProcessor {
         writeHoldersOnJavaFile();
 
         return true;
-    }
-
-    @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        Set<String> types = new LinkedHashSet<>();
-
-        types.add(Holy.class.getCanonicalName());
-
-        return types;
     }
 
     protected boolean isAcceptable(Element element) {
